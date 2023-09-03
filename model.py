@@ -5,7 +5,6 @@ import pandas as pd
 import plotly.graph_objs as go
 import torch
 from catboost import CatBoostRegressor as cat
-from django.shortcuts import render
 from plotly.offline import plot
 from torch import nn
 from plotly.offline import plot
@@ -154,11 +153,11 @@ class Tree(object):
         return power
 
 
-def get_speed():
+def get_speed(place: str = 'New Delhi,IN'):
     from pyowm.owm import OWM
     owm = OWM('8f1b9a3225495a9c8a89cb7ff7848c08') 
     mgr = owm.weather_manager()
-    observation = mgr.weather_at_place('New Delhi,IN')
+    observation = mgr.weather_at_place(place)
     wind_dict_in_meters_per_sec = observation.weather.wind()   # Default unit: 'meters_sec'
     speed = wind_dict_in_meters_per_sec['speed']
     speed = float(speed)
@@ -183,11 +182,13 @@ def graph(speed: float = 10.0, direction:float = 180.0, n_steps:int = 40):
     predictor = Predictor(lstm)
     x = torch.Tensor([speed/25, direction/360])
     speed, direction = predictor.predict(x, steps = n_steps)
+    speed_norm = [x.item() for x in speed]
+    direction_norm = [x.item() for x in direction]
     tree = Tree()
-    power = tree.forward(speed, direction)
+    power = tree.forward(speed_norm, direction_norm)
     if type(power) != list:
         power = [ i for i in power]
-    scatter = go.Scatter(x=np.arange(len(power)), y=power,
+    '''scatter = go.Scatter(x=np.arange(len(power)), y=power,
                          mode='lines', name='Power Forecast',
                          opacity=1.0, marker_color='red') 
     
@@ -207,17 +208,16 @@ def graph(speed: float = 10.0, direction:float = 180.0, n_steps:int = 40):
                         )
                     )
 
-    plt_div = plot(fig, output_type='div')
-
-    return plt_div, max(power), np.argmax(power)
+    plt_div = plot(fig, output_type='div')'''
+    return power
   
     
     
 ########################################################################################
 #####This function will accept input from webpage as int and return respective grap#####
 ########################################################################################
-def in_out(nsteps: int = 10):
-    speed = get_speed()
+def in_out(nsteps: int = 10,place: str = 'New Delhi,IN'):
+    speed = get_speed(place)
     direction = 180.0
     grph = graph(speed, direction, n_steps = nsteps)
     return grph
